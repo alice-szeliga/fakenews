@@ -14,5 +14,147 @@ import numpy as np
 import nltk
 
 # libraries specific to project
-import util
 from util import *
+from cluster import *
+
+def extract_dictionary(field, X):
+    """
+    Given a filename, reads the text file and builds a dictionary of unique
+    words/punctuations.
+    
+    Parameters
+    --------------------
+        field    -- int, index of field to extract a dictionary for
+        X        -- ndarray of dimensions (n,d), data samples
+    
+    Returns
+    --------------------
+        field_dictionary -- dictionary, (key, value) pairs are (word, index)
+        proccessed_text  -- list of lists, processed text fields for each sample
+    """
+    n,d = X.shape
+    
+    field_dictionary = {}
+    processed_text = [[] for i in range(n)]
+    index = 0
+    
+    stopwords = nltk.corpus.stopwords.words("english")
+    
+    for i in range(n):
+        sample_field_text = X[i, field]
+        # tokenize
+        tokens = nltk.word_tokenize(field_value)
+        # remove stop words
+        words = [w for w in tokens if not w in stopwords]
+        
+        # process the text to populate word_list
+        for word in words:
+            if word not in field_dictionary:
+                field_dictionary[word] = index
+                index += 1
+        
+        # store the words in processed_text
+        processed_text[i] = words
+
+    return field_dictionary, processed_text
+
+
+def extract_feature_vectors(X, text_fields, field_dictionaries):
+    """
+    Produces a bag-of-words representation of a text file specified by the
+    filename infile based on the dictionary word_list.
+    
+    Parameters
+    --------------------
+        X         -- ndarray of dimensions (n,d), data samples
+        text_fields      -- dictionary, pairs are (field index, list of processed text for that field)
+        field_dictionaries -- dictionary, pairs are (field index, dictionary for that field)
+    
+    Returns
+    --------------------
+        feature_matrix -- numpy array of shape (n,d), each feature is either
+                          the original field value (for numbers) or a bag-of-words
+                          representation (for text):
+                          boolean (0,1) array indicating word presence in a string
+    """
+    # create appropriately sized matrix to hold feature vectors
+    n,d = X.shape
+    num_features = d
+    for fd in field_dictionaries:
+        num_features += len(fd) - 1
+    feature_matrix = np.zeros((n, num_features))
+    
+    # process each line to populate feature_matrix
+    for i in range(n):
+        feature_index = 0
+        # loop over fields and expand textual ones to be expressed as bag-of-
+        # words across multiple features
+        for j in range(d):
+            if j in text_fields:
+                field_text = text_fields[i]
+                field_dictionary = field_dictionaries[j]
+                num_field_features = len(field_dictionary)
+                for word in field_dictionary:
+                    if word in field_text:
+                        feature_matrix[i, feature_index] = 1
+                    feature_index += 1
+            else:
+                feature_matrix[i, feature_index] = X[i,j]
+                feature_index += 1
+
+    return feature_matrix
+
+def main():
+    
+    #####################
+    # LOADING RESOURCES #
+    #####################
+    
+    # load the cleaned data set
+    data = load_data("test.tsv")
+    # X contains feature vectors for each "fake news" article.
+    # y contains the fake news classification from the BS Detector, which we
+    # will use to analyze our clusters but not to create them.
+    
+    # The first line of the tsv is field headers.
+    headers = np.append(data.X[0, :], [data.y[0]])
+    X, y = data.X[1:, :], data.y[1:]
+    
+    long_text_fields = ["author", "text"] #["title", "text", "thread_title"]
+    
+    # Fetch stop words and tokenizer
+    # download Stopwords Corpus and Punkt Tokenizer Models
+    # from http://www.nltk.org/nltk_data/
+    # unzip folder into another called "corpora" or "tokenizers", respectively,
+    # at one of the following locations:
+    #    - 'C:\\Users\\brynn/nltk_data'
+    #    - 'C:\\nltk_data'
+    #    - 'D:\\nltk_data'
+    #    - 'E:\\nltk_data'
+    #    - 'C:\\Users\\brynn\\Miniconda2\\nltk_data'
+    #    - 'C:\\Users\\brynn\\Miniconda2\\lib\\nltk_data'
+    #    - 'C:\\Users\\brynn\\AppData\\Roaming\\nltk_data'
+    stopwords = nltk.corpus.stopwords.words("english")
+    
+    ###################
+    # PROCESSING TEXT #
+    ###################
+    test_sample = X[0, :]
+    for i in range(len(test_sample)):
+        header = headers[i]
+        field_value = test_sample[i]
+        print "Field #", i, header, ":"
+        if header in long_text_fields:
+            # tokenization
+            tokens = nltk.word_tokenize(field_value)
+            # removing stop words
+            words = [w for w in tokens if not w in stopwords]
+            print words
+        else:
+            print field_value
+            
+if __name__ == "__main__" :
+    main()
+    
+    
+    

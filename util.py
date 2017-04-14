@@ -45,7 +45,7 @@ class Data :
     
     def load(self, filename) :
         """
-        Load csv file into X array of features and y array of labels.
+        Load tsv file into X array of features and y array of labels.
         
         Parameters
         --------------------
@@ -54,11 +54,20 @@ class Data :
         
         # determine filename
         dir = os.path.dirname(__file__)
-        f = os.path.join(dir, '..', 'data', filename)
+        current_working_dir = os.getcwd()
+
+        # assumes a folder called data in the current directory
+        data_dir = os.path.join(dir, 'data')
+        os.chdir(data_dir)
+        
+        f = os.path.abspath(filename)
         
         # load data
         with open(f, 'r') as fid :
-            data = np.loadtxt(fid, delimiter=",")
+            data = np.loadtxt(fid, dtype=np.str, delimiter="\t")
+        
+        print data
+        os.chdir(current_working_dir)
         
         # separate features and labels
         self.X = data[:,:-1]
@@ -66,7 +75,7 @@ class Data :
 
 # helper functions
 def load_data(filename) :
-    """Load csv file into Data class."""
+    """Load tsv file into Data class."""
     data = Data()
     data.load(filename)
     return data
