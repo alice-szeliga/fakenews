@@ -41,9 +41,9 @@ def extract_dictionary(field, X):
     stopwords = nltk.corpus.stopwords.words("english")
     
     for i in range(n):
-        sample_field_text = X[i, field]
+        field_text = X[i, field]
         # tokenize
-        tokens = nltk.word_tokenize(field_value)
+        tokens = nltk.word_tokenize(field_text)
         # remove stop words
         words = [w for w in tokens if not w in stopwords]
         
@@ -80,47 +80,31 @@ def extract_feature_vectors(X, text_fields, field_dictionaries):
     # create appropriately sized matrix to hold feature vectors
     n,d = X.shape
     num_features = d
-    for fd in field_dictionaries:
+    for fd in field_dictionaries.itervalues():
         num_features += len(fd) - 1
     feature_matrix = np.zeros((n, num_features))
     
     # process each line to populate feature_matrix
     for i in range(n):
-        feature_index = 0
+        field_feature_index = 0
         # loop over fields and expand textual ones to be expressed as bag-of-
         # words across multiple features
         for j in range(d):
             if j in text_fields:
-                field_text = text_fields[i]
+                field_text = text_fields[j][i]
                 field_dictionary = field_dictionaries[j]
-                num_field_features = len(field_dictionary)
                 for word in field_dictionary:
                     if word in field_text:
+                        feature_index = field_feature_index + field_dictionary[word]
                         feature_matrix[i, feature_index] = 1
-                    feature_index += 1
+                field_feature_index += len(field_dictionary)
             else:
-                feature_matrix[i, feature_index] = X[i,j]
-                feature_index += 1
+                feature_matrix[i, field_feature_index] = X[i,j]
+                field_feature_index += 1
 
     return feature_matrix
 
 def main():
-    
-    #####################
-    # LOADING RESOURCES #
-    #####################
-    
-    # load the cleaned data set
-    data = load_data("test.tsv")
-    # X contains feature vectors for each "fake news" article.
-    # y contains the fake news classification from the BS Detector, which we
-    # will use to analyze our clusters but not to create them.
-    
-    # The first line of the tsv is field headers.
-    headers = np.append(data.X[0, :], [data.y[0]])
-    X, y = data.X[1:, :], data.y[1:]
-    
-    long_text_fields = ["author", "text"] #["title", "text", "thread_title"]
     
     # Fetch stop words and tokenizer
     # download Stopwords Corpus and Punkt Tokenizer Models
@@ -134,24 +118,61 @@ def main():
     #    - 'C:\\Users\\brynn\\Miniconda2\\nltk_data'
     #    - 'C:\\Users\\brynn\\Miniconda2\\lib\\nltk_data'
     #    - 'C:\\Users\\brynn\\AppData\\Roaming\\nltk_data'
-    stopwords = nltk.corpus.stopwords.words("english")
+    
+    #####################
+    # LOADING RESOURCES #
+    #####################
+    
+    # load the cleaned data set
+    data = load_data("test.tsv")
+    # X contains feature vectors for each "fake news" article.
+    # y contains the fake news classification from the BS Detector, which we
+    # will use to analyze our clusters but not to create them.
+    
+    # The first line of the tsv is field headers.
+    headers = np.append(data.X[0, :], [data.y[0]])
+    num_fields = len(headers) - 1
+    X, y = data.X[1:, :], data.y[1:]
+    
+    long_text_fields = ["author", "text"] #["title", "text", "thread_title"]
     
     ###################
     # PROCESSING TEXT #
     ###################
-    test_sample = X[0, :]
-    for i in range(len(test_sample)):
-        header = headers[i]
-        field_value = test_sample[i]
-        print "Field #", i, header, ":"
-        if header in long_text_fields:
-            # tokenization
-            tokens = nltk.word_tokenize(field_value)
-            # removing stop words
-            words = [w for w in tokens if not w in stopwords]
-            print words
-        else:
-            print field_value
+    
+    field_dictionaries = {}
+    text_fields = {}
+    for i in range(num_fields):
+        if headers[i] in long_text_fields:
+            field_dictionaries[i], text_fields[i] = extract_dictionary(i, X)
+    
+    feature_matrix = extract_feature_vectors(X, text_fields, field_dictionaries)
+    print feature_matrix
+    
+    ########
+    # TEST #
+    ########
+#    data = load_data("test.tsv")
+#    headers = np.append(data.X[0, :], [data.y[0]])
+#    X, y = data.X[1:, :], data.y[1:]
+#    
+#    long_text_fields = ["author", "text"]
+#
+#    stopwords = nltk.corpus.stopwords.words("english")
+#    
+#    test_sample = X[0, :]
+#    for i in range(len(test_sample)):
+#        header = headers[i]
+#        field_value = test_sample[i]
+#        print "Field #", i, header, ":"
+#        if header in long_text_fields:
+#            # tokenization
+#            tokens = nltk.word_tokenize(field_value)
+#            # removing stop words
+#            words = [w for w in tokens if not w in stopwords]
+#            print words
+#        else:
+#            print field_value
             
 if __name__ == "__main__" :
     main()

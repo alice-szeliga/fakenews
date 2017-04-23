@@ -66,7 +66,6 @@ class Data :
         with open(f, 'r') as fid :
             data = np.loadtxt(fid, dtype=np.str, delimiter="\t")
         
-        print data
         os.chdir(current_working_dir)
         
         # separate features and labels
