@@ -49,3 +49,9 @@ Temporary Items
 # Compiled code
 *.pyc
 *.exe
+
+# Excel temp
+~$*
+
+# Kmodes
+kmodesMaster

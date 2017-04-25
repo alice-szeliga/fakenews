@@ -13,9 +13,12 @@ import numpy as np
 # http://www.nltk.org/
 import nltk
 
+# k-modes and k-prototypes
+from kmodesMaster.kmodes.kprototypes import *
+
 # libraries specific to project
 from util import *
-from cluster import *
+#from cluster import *
 
 def extract_dictionary(field, X):
     """
@@ -104,6 +107,23 @@ def extract_feature_vectors(X, text_fields, field_dictionaries):
 
     return feature_matrix
 
+def calculate_purity(clusters, weighted=False):
+    """
+    Produces a bag-of-words representation of a text file specified by the
+    filename infile based on the dictionary word_list.
+    
+    Parameters
+    --------------------
+        clusters    -- output of kprototypes fit_predict function, the set of clusters
+        weighted    -- bool, whether to weight the purities of each cluster when averaging
+    
+    Returns
+    --------------------
+        overall_purity -- a float between 0 and 1 representing the averaged purity of the clusters
+    """
+    
+
+
 def main():
     
     # Fetch stop words and tokenizer
@@ -134,7 +154,9 @@ def main():
     num_fields = len(headers) - 1
     X, y = data.X[1:, :], data.y[1:]
     
-    long_text_fields = ["author", "text"] #["title", "text", "thread_title"]
+    long_text_fields = ["text"] #["title", "text", "thread_title"]
+    categorical_fields = ["author"] #["author", "site_url"]
+    categorical_indices = [0] #[0, 3]
     
     ###################
     # PROCESSING TEXT #
@@ -148,6 +170,10 @@ def main():
     
     feature_matrix = extract_feature_vectors(X, text_fields, field_dictionaries)
     print feature_matrix
+    
+    model = kprototypes.KPrototypes(n_clusters=2, init='Cao', verbose=2)
+    clusters = model.fit_predict(X, categorical=categorical_indices)
+    print clusters
     
     ########
     # TEST #
