@@ -14,11 +14,13 @@ import numpy as np
 import nltk
 
 # k-modes and k-prototypes
-from kmodesMaster.kmodes.kprototypes import *
+#from kmodesMaster.kmodes.kprototypes import *
 
 # libraries specific to project
 from util import *
 #from cluster import *
+
+from sklearn.feature_extraction.text import TfidfTransformer
 
 def extract_dictionary(field, X):
     """
@@ -85,7 +87,10 @@ def extract_feature_vectors(X, text_fields, field_dictionaries):
     num_features = d
     for fd in field_dictionaries.itervalues():
         num_features += len(fd) - 1
-    feature_matrix = np.zeros((n, num_features))
+    feature_matrix = np.empty((n, num_features), dtype=object)
+    
+    # Create a TF-IDF transformer to normalize data.
+    transformer = TfidfTransformer(smooth_idf=False)
     
     # process each line to populate feature_matrix
     for i in range(n):
@@ -94,15 +99,25 @@ def extract_feature_vectors(X, text_fields, field_dictionaries):
         # words across multiple features
         for j in range(d):
             if j in text_fields:
-                field_text = text_fields[j][i]
+                field_text = text_fields[j][i] # textual entry for that field
                 field_dictionary = field_dictionaries[j]
-                for word in field_dictionary:
-                    if word in field_text:
-                        feature_index = field_feature_index + field_dictionary[word]
+                for word in field_text:
+                    feature_index = field_feature_index + field_dictionary[word]
+                    if feature_matrix[i, feature_index] == None:
                         feature_matrix[i, feature_index] = 1
+                    else:
+                        feature_matrix[i, feature_index] += 1
+#                for word in field_dictionary:
+#                    feature_index = field_feature_index + field_dictionary[word]
+#                    if word in field_text:
+#                        feature_matrix[i, feature_index] = 1
+#                    else:
+#                        feature_matrix[i, feature_index] = 0
                 field_feature_index += len(field_dictionary)
             else:
+                print X[i,j]
                 feature_matrix[i, field_feature_index] = X[i,j]
+                print feature_matrix[i, field_feature_index]
                 field_feature_index += 1
 
     return feature_matrix
@@ -121,10 +136,20 @@ def calculate_purity(clusters, weighted=False):
     --------------------
         overall_purity -- a float between 0 and 1 representing the averaged purity of the clusters
     """
+    overall_purity = 0
+    # TODO: not sure this is how clusters is structured
+    for cluster in clusters:
+        labels = []
+        for p in cluster:
+            labels.append(p.label)
+        
+        cluster_label, count = stats.mode(labels)
     
 
 
 def main():
+    
+    np.set_printoptions(threshold=np.nan)
     
     # Fetch stop words and tokenizer
     # download Stopwords Corpus and Punkt Tokenizer Models
@@ -169,11 +194,12 @@ def main():
             field_dictionaries[i], text_fields[i] = extract_dictionary(i, X)
     
     feature_matrix = extract_feature_vectors(X, text_fields, field_dictionaries)
+    print X
     print feature_matrix
     
-    model = kprototypes.KPrototypes(n_clusters=2, init='Cao', verbose=2)
-    clusters = model.fit_predict(X, categorical=categorical_indices)
-    print clusters
+    #model = kprototypes.KPrototypes(n_clusters=2, init='Cao', verbose=2)
+    #clusters = model.fit_predict(X, categorical=categorical_indices)
+    #print clusters
     
     ########
     # TEST #
