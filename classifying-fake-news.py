@@ -20,17 +20,23 @@ import nltk
 from util import *
 from cluster import *
 
+<<<<<<< HEAD
 from sklearn import cluster
 from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.linear_model.tests.test_ridge import ind
+=======
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
+>>>>>>> 535fb32a54c37ff6116d606ffec9eaeb97a4173b
 
-def extract_dictionary(field, X):
+def extract_feature_vectors(X, text_fields, numerical_fields):
     """
-    Given a filename, reads the text file and builds a dictionary of unique
-    words/punctuations.
+    Extracts a feature matrix from X, treating data as text (processed as a bag
+    of words), categorical (left as a single string), or numerical (converted
+    to float).
     
     Parameters
     --------------------
+<<<<<<< HEAD
         field    -- int, index of field to extract a dictionary for
         X        -- ndarray of dimensions (n,d), data samples
     
@@ -75,6 +81,8 @@ def extract_feature_vectors(X, text_fields, numerical_fields, max_features):
     
     Parameters
     --------------------
+=======
+>>>>>>> 535fb32a54c37ff6116d606ffec9eaeb97a4173b
         X                -- ndarray of dimensions (n,d), data samples
         text_fields      -- list of indices corresponding to textual fields
                             (columns in X)
@@ -90,6 +98,7 @@ def extract_feature_vectors(X, text_fields, numerical_fields, max_features):
         vectorizer     -- the CountVectorizer used
         transformer    -- the TfidfTransformer used
     """
+<<<<<<< HEAD
     n,d = X.shape
     vectorizers = {}
     transformers = {}
@@ -98,12 +107,24 @@ def extract_feature_vectors(X, text_fields, numerical_fields, max_features):
         vectorizers[i] = CountVectorizer(stop_words='english', lowercase=False, min_df=1, max_features=max_features)
         transformers[i] = TfidfTransformer(use_idf=True, smooth_idf=False)
     
+=======
+    vectorizer = CountVectorizer(stop_words='english', lowercase=False, min_df=1, max_features=None)
+    transformer = TfidfTransformer(use_idf=True, smooth_idf=False)
+    
+    n,d = X.shape
+>>>>>>> 535fb32a54c37ff6116d606ffec9eaeb97a4173b
     feature_matrix = np.empty((n, 0), dtype=object)
     for field in range(d):
         if field in text_fields:
             field_text = X[:, field]
+<<<<<<< HEAD
             counts = vectorizers[field].fit_transform(field_text)
             tfidf = transformers[field].fit_transform(counts)
+=======
+            counts = vectorizer.fit_transform(field_text)
+            tfidf = transformer.fit_transform(counts)
+            print "tfidf:", tfidf.toarray()
+>>>>>>> 535fb32a54c37ff6116d606ffec9eaeb97a4173b
             feature_matrix = np.concatenate((feature_matrix, tfidf.toarray()), axis=1)
             
         else:
@@ -112,10 +133,17 @@ def extract_feature_vectors(X, text_fields, numerical_fields, max_features):
                 field_values = field_values.astype(np.float)
             feature_matrix = np.concatenate((feature_matrix, field_values.reshape(n, 1)), axis=1)
             
+<<<<<<< HEAD
     return feature_matrix, vectorizers, transformers
 
 
 def calculate_purity(clusters, true_labels, num_clusters, weighted=False):
+=======
+    return feature_matrix, vectorizer, transformer
+
+
+def calculate_purity(clusters, weighted=False):
+>>>>>>> 535fb32a54c37ff6116d606ffec9eaeb97a4173b
     """
     Computes the proportion of the dominant class in each cluster and averages
     this across all clusters.
@@ -241,6 +269,7 @@ def main():
     
     n, d = X.shape
     
+<<<<<<< HEAD
     # Defining the text vs. categorical vs numerical fields for our d
     # title (1), text (2), and thread title (5)
     text_fields = [1,2,5]
@@ -248,6 +277,16 @@ def main():
     categorical_fields = [0,3,4] 
     # spam score (6), replies count (7), participants (8), likes (9), comments (10), shares (11)
     numerical_fields = [6,7,8,9,10,11] 
+=======
+    # title (1), text (2), and thread title (5)
+    text_fields = [2] # [1,2,5]
+    
+    # author (0), site url (3), country (4)
+    categorical_fields = [0] #[0,3,4] 
+    
+    # spam score (6), replies count (7), participants (8), likes (9), comments (10), shares (11)
+    numerical_fields = [1] #[6,7,8,9,10,11] 
+>>>>>>> 535fb32a54c37ff6116d606ffec9eaeb97a4173b
     
     ###################
     # PROCESSING TEXT #
@@ -369,6 +408,19 @@ def main():
 
 
     
+<<<<<<< HEAD
+=======
+    feature_matrix, vectorizer, transformer = extract_feature_vectors(X, text_fields, numerical_fields)
+
+    print X
+    print feature_matrix
+    
+    #model = kprototypes.KPrototypes(n_clusters=2, init='Cao', verbose=2)
+    #clusters = model.fit_predict(X, categorical=categorical_indices)
+    #print clusters
+
+            
+>>>>>>> 535fb32a54c37ff6116d606ffec9eaeb97a4173b
 if __name__ == "__main__" :
     main()
     
