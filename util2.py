@@ -66,6 +66,37 @@ class Data :
         with open(f, 'r') as fid :
             data = np.loadtxt(fid, dtype=np.str, delimiter="\t")
         
+        print data
+        os.chdir(current_working_dir)
+        
+        # separate features and labels
+        self.X = data[:,:-1]
+        self.y = data[:,-1]
+        
+    def load2(self, filename) :
+        """
+        Load tsv file into X array of features and y array of labels.
+        
+        Parameters
+        --------------------
+            filename -- string, filename
+        """
+        
+        # determine filename
+        dir = os.path.dirname(__file__)
+        current_working_dir = os.getcwd()
+
+        # assumes a folder called data in the current directory
+        data_dir = os.path.join(dir, 'data')
+        os.chdir(data_dir)
+        
+        f = os.path.abspath(filename)
+        
+        # load data
+        with open(f, 'r') as fid :
+            data = np.genfromtxt(fid, dtype=np.str, delimiter="\t", comments = False, filling_values = "DATA_MISSING")
+        
+        print data
         os.chdir(current_working_dir)
         
         # separate features and labels
@@ -77,4 +108,10 @@ def load_data(filename) :
     """Load tsv file into Data class."""
     data = Data()
     data.load(filename)
+    return data
+
+def load_data2(filename) :
+    """Load tsv file into Data class."""
+    data = Data()
+    data.load2(filename)
     return data
