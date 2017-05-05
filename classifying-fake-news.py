@@ -20,107 +20,52 @@ import nltk
 from util import *
 #from cluster import *
 
-from sklearn.feature_extraction.text import TfidfTransformer
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 
-def extract_dictionary(field, X):
+def extract_feature_vectors(X, text_fields, numerical_fields):
     """
-    Given a filename, reads the text file and builds a dictionary of unique
-    words/punctuations.
+    Extracts a feature matrix from X, treating data as text (processed as a bag
+    of words), categorical (left as a single string), or numerical (converted
+    to float).
     
     Parameters
     --------------------
-        field    -- int, index of field to extract a dictionary for
-        X        -- ndarray of dimensions (n,d), data samples
-    
-    Returns
-    --------------------
-        field_dictionary -- dictionary, (key, value) pairs are (word, index)
-        proccessed_text  -- list of lists, processed text fields for each sample
-    """
-    n,d = X.shape
-    
-    field_dictionary = {}
-    processed_text = [[] for i in range(n)]
-    index = 0
-    
-    stopwords = nltk.corpus.stopwords.words("english")
-    
-    for i in range(n):
-        field_text = X[i, field]
-        # tokenize
-        tokens = nltk.word_tokenize(field_text)
-        # remove stop words
-        words = [w for w in tokens if not w in stopwords]
-        
-        # process the text to populate word_list
-        for word in words:
-            if word not in field_dictionary:
-                field_dictionary[word] = index
-                index += 1
-        
-        # store the words in processed_text
-        processed_text[i] = words
-
-    return field_dictionary, processed_text
-
-
-def extract_feature_vectors(X, text_fields, field_dictionaries):
-    """
-    Produces a bag-of-words representation of a text file specified by the
-    filename infile based on the dictionary word_list.
-    
-    Parameters
-    --------------------
-        X         -- ndarray of dimensions (n,d), data samples
-        text_fields      -- dictionary, pairs are (field index, list of processed text for that field)
-        field_dictionaries -- dictionary, pairs are (field index, dictionary for that field)
+        X                -- ndarray of dimensions (n,d), data samples
+        text_fields      -- list of indices corresponding to textual fields
+                            (columns in X)
+        numerical_fields -- list of indices corresponding to numerical fields
+                            (columns in X)
     
     Returns
     --------------------
         feature_matrix -- numpy array of shape (n,d), each feature is either
-                          the original field value (for numbers) or a bag-of-words
-                          representation (for text):
-                          boolean (0,1) array indicating word presence in a string
+                          the original field value (for categorical), the float
+                          interpretation (for numerical), or a TF-IDF bag-of-
+                          words representation (for text)
+        vectorizer     -- the CountVectorizer used
+        transformer    -- the TfidfTransformer used
     """
-    # create appropriately sized matrix to hold feature vectors
+    vectorizer = CountVectorizer(stop_words='english', lowercase=False, min_df=1, max_features=None)
+    transformer = TfidfTransformer(use_idf=True, smooth_idf=False)
+    
     n,d = X.shape
-    num_features = d
-    for fd in field_dictionaries.itervalues():
-        num_features += len(fd) - 1
-    feature_matrix = np.empty((n, num_features), dtype=object)
-    
-    # Create a TF-IDF transformer to normalize data.
-    transformer = TfidfTransformer(smooth_idf=False)
-    
-    # process each line to populate feature_matrix
-    for i in range(n):
-        field_feature_index = 0
-        # loop over fields and expand textual ones to be expressed as bag-of-
-        # words across multiple features
-        for j in range(d):
-            if j in text_fields:
-                field_text = text_fields[j][i] # textual entry for that field
-                field_dictionary = field_dictionaries[j]
-                for word in field_text:
-                    feature_index = field_feature_index + field_dictionary[word]
-                    if feature_matrix[i, feature_index] == None:
-                        feature_matrix[i, feature_index] = 1
-                    else:
-                        feature_matrix[i, feature_index] += 1
-#                for word in field_dictionary:
-#                    feature_index = field_feature_index + field_dictionary[word]
-#                    if word in field_text:
-#                        feature_matrix[i, feature_index] = 1
-#                    else:
-#                        feature_matrix[i, feature_index] = 0
-                field_feature_index += len(field_dictionary)
-            else:
-                print X[i,j]
-                feature_matrix[i, field_feature_index] = X[i,j]
-                print feature_matrix[i, field_feature_index]
-                field_feature_index += 1
+    feature_matrix = np.empty((n, 0), dtype=object)
+    for field in range(d):
+        if field in text_fields:
+            field_text = X[:, field]
+            counts = vectorizer.fit_transform(field_text)
+            tfidf = transformer.fit_transform(counts)
+            print "tfidf:", tfidf.toarray()
+            feature_matrix = np.concatenate((feature_matrix, tfidf.toarray()), axis=1)
+            
+        else:
+            field_values = X[:, field]
+            if field in numerical_fields:
+                field_values = field_values.astype(np.float)
+            feature_matrix = np.concatenate((feature_matrix, field_values.reshape(n, 1)), axis=1)
+            
+    return feature_matrix, vectorizer, transformer
 
-    return feature_matrix
 
 def calculate_purity(clusters, weighted=False):
     """
@@ -179,52 +124,28 @@ def main():
     num_fields = len(headers) - 1
     X, y = data.X[1:, :], data.y[1:]
     
-    long_text_fields = ["text"] #["title", "text", "thread_title"]
-    categorical_fields = ["author"] #["author", "site_url"]
-    categorical_indices = [0] #[0, 3]
+    # title (1), text (2), and thread title (5)
+    text_fields = [2] # [1,2,5]
+    
+    # author (0), site url (3), country (4)
+    categorical_fields = [0] #[0,3,4] 
+    
+    # spam score (6), replies count (7), participants (8), likes (9), comments (10), shares (11)
+    numerical_fields = [1] #[6,7,8,9,10,11] 
     
     ###################
     # PROCESSING TEXT #
     ###################
     
-    field_dictionaries = {}
-    text_fields = {}
-    for i in range(num_fields):
-        if headers[i] in long_text_fields:
-            field_dictionaries[i], text_fields[i] = extract_dictionary(i, X)
-    
-    feature_matrix = extract_feature_vectors(X, text_fields, field_dictionaries)
+    feature_matrix, vectorizer, transformer = extract_feature_vectors(X, text_fields, numerical_fields)
+
     print X
     print feature_matrix
     
     #model = kprototypes.KPrototypes(n_clusters=2, init='Cao', verbose=2)
     #clusters = model.fit_predict(X, categorical=categorical_indices)
     #print clusters
-    
-    ########
-    # TEST #
-    ########
-#    data = load_data("test.tsv")
-#    headers = np.append(data.X[0, :], [data.y[0]])
-#    X, y = data.X[1:, :], data.y[1:]
-#    
-#    long_text_fields = ["author", "text"]
-#
-#    stopwords = nltk.corpus.stopwords.words("english")
-#    
-#    test_sample = X[0, :]
-#    for i in range(len(test_sample)):
-#        header = headers[i]
-#        field_value = test_sample[i]
-#        print "Field #", i, header, ":"
-#        if header in long_text_fields:
-#            # tokenization
-#            tokens = nltk.word_tokenize(field_value)
-#            # removing stop words
-#            words = [w for w in tokens if not w in stopwords]
-#            print words
-#        else:
-#            print field_value
+
             
 if __name__ == "__main__" :
     main()
